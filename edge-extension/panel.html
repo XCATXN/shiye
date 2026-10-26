@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>聊天备份</title><link rel="stylesheet" href="panel.css">
+  <script src="core.js" defer></script><script src="platforms.js" defer></script><script src="surface-core.js" defer></script><script src="claude-core.js" defer></script><script src="provider-core.js" defer></script><script src="organize.js" defer></script><script src="page-reader.js" defer></script><script src="browser-context.js" defer></script><script src="capture-store.js" defer></script><script src="background-client.js" defer></script><script src="panel.js" defer></script>
+</head>
+<body>
+<svg class="icon-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+  <symbol id="i-archive" viewBox="0 0 24 24"><path d="M5 7V3h14v4M4 7h16v14H4zM9 12h6M12 12v5m-2-2 2 2 2-2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 10 7-10 7z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M5 16v4h14v-4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8zm0 0v5h5M8 12h8m-8 4h6"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.5 7a7 7 0 0 1 12-2L20 8M4 16l2.5 3a7 7 0 0 0 12-2"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v9M6.3 5.9a8 8 0 1 0 11.4 0"/></symbol>
+</defs></svg>
+<main>
+  <header class="app-header">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"><svg class="icon"><use href="#i-archive"/></svg></span><div><h1>拾页 · 聊天存档</h1><p>单条归档 · 本机保存</p></div></div>
+    <div class="header-actions"><span class="version">v0.9.0</span><button id="sleepPlugin" class="power-button" title="停止任务并休眠，保留本机记录；点击工具栏图标重新打开。" disabled><svg class="icon" aria-hidden="true"><use href="#i-power"/></svg>关闭插件</button></div>
+  </header>
+  <div class="page-context"><span class="context-label" id="platformLabel">采集对象</span><strong id="targetTitle">正在确认当前页面…</strong><span id="targetHint">采集由你点击开始</span></div>
+  <p class="source-notice" id="sourceNotice" hidden>网页正文 · 完整性待核对。将自动滚动原聊天；这不是官方全量导出。</p>
+  <section class="record-section" aria-labelledby="recordLabel">
+    <div class="section-caption"><label id="recordLabel" for="sessions">本机记录</label><span class="section-hint">选择或继续已有备份</span></div>
+    <div class="record-picker"><select id="sessions"><option value="">尚无采集记录</option></select><button id="deleteRecord" class="icon-button delete-button" aria-label="删除所选记录" title="删除所选本地记录" disabled><svg class="icon"><use href="#i-trash"/></svg></button></div>
+    <p id="storage" class="storage-line" title="按保存内容估算，不包含数据库索引等开销。">正在统计记录大小…</p>
+  </section>
+  <section id="statusCard" class="card capture-card" data-tone="idle" aria-labelledby="state">
+    <div class="card-heading"><div class="state-heading"><span class="state-dot" aria-hidden="true"></span><h2 id="state">等待开始</h2></div><span id="captureBadge" class="quiet-tag">当前路线</span></div>
+    <p id="detail" class="status-detail" aria-live="polite">点击“采集当前聊天”开始。</p>
+    <div class="metrics">
+      <div class="metric-primary"><strong id="messages">0</strong><span>去重总记录</span></div>
+      <div><strong id="pages">0</strong><span id="rawCountLabel">原始响应</span></div>
+      <div><strong id="versions">0</strong><span id="branchLabel">版本标记</span></div>
+      <div><strong id="emptyCount">0</strong><span>空正文</span></div>
+    </div>
+    <p id="countBreakdown" class="count-breakdown">总记录包含正文和辅助信息。</p>
+    <p id="pageProgress" class="page-progress">读取到最早页并完成复核后结束。</p>
+    <p id="quality" class="quality-line"></p>
+    <div class="setting-row capture-method" id="captureMethodRow" hidden><label for="captureMethod">新采集方式</label><select id="captureMethod"><option value="structured">会话数据 · 不滚动</option><option value="surface">网页正文 · 备用</option></select></div>
+    <div class="capture-actions">
+      <button id="start" class="primary"><svg class="icon"><use href="#i-play"/></svg>采集当前聊天</button>
+      <button id="resume" aria-label="继续所选记录" title="从所选记录的检查点继续"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>继续</button>
+      <button id="pause"><svg class="icon"><use href="#i-pause"/></svg>暂停</button>
+    </div>
+    <button id="reloadOnce" class="reload-button" title="仅在你点击后刷新一次；请先保存尚未发送的输入。" hidden><svg class="icon"><use href="#i-refresh"/></svg>刷新一次并采集</button>
+    <button id="revalidateSaved" class="text-button revalidate-button" title="重新校验所选接口采集记录，不访问网页，不改写原始响应。" hidden><svg class="icon"><use href="#i-refresh"/></svg>重新校验已存数据</button>
+  </section>
+  <section class="card export-card" aria-labelledby="exportTitle">
+    <div class="card-heading"><h2 id="exportTitle">整理与导出</h2><span class="section-hint">合并 · 去重 · 筛选</span></div>
+    <p class="section-description">整理成适合阅读与剧情总结的原文。</p>
+    <div class="export-options">
+      <div class="setting-row"><label for="exportProfile">整理范围</label><select id="exportProfile"><option value="reading">正文与附件引用</option><option value="all">全部记录类型</option></select></div>
+      <div class="setting-row"><label for="exportFormat">文件格式</label><select id="exportFormat" title="TXT 便于阅读；JSON 保留消息字段与来源索引。"><option value="txt">TXT 文本</option><option value="json">JSON 数据</option></select></div>
+    </div>
+    <div class="export-actions">
+      <button id="organizeDownload" class="primary"><svg class="icon"><use href="#i-download"/></svg>整理并下载</button>
+      <button id="preview"><svg class="icon"><use href="#i-eye"/></svg>预览</button>
+      <button id="download" class="text-button" title="下载保存的原始响应与采集记录"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg>原始 JSON</button>
+    </div>
+    <p id="organizeSummary" class="organize-summary" aria-live="polite">已有记录可直接整理，无需重新采集。</p>
+    <p id="organizeError" class="inline-error" role="alert" hidden></p>
+    <details id="previewDetails" class="preview-details" hidden><summary>原文预览 <span>首尾节选</span></summary><pre id="previewText"></pre></details>
+  </section>
+  <div class="utilities">
+    <details id="logSection"><summary>运行日志 <span id="logCount" class="log-count">0</span></summary><pre id="log"></pre></details>
+    <details><summary>记录与权限说明</summary><div class="utility-content"><p>在 Edge 扩展菜单为“单聊天备份”选择“在工具栏中显示”，以后点击图标即可打开此侧栏，不需要 F12。侧栏左右位置由浏览器决定。</p><p>点击采集时读取当前窗口中选中的聊天。先打开聊天、后打开侧栏也可以直接开始，无需为触发请求而刷新。从此侧栏启动后，由扩展后台锁定原聊天标签进行采集。可以直接点右上角 × 关闭侧栏，也可以切去看视频；重新点击图标会显示同一任务的最新进度。想停止时请点“暂停”。请保留原 ChatGPT 标签和浏览器；原标签关闭、刷新或切换聊天时会暂停。未完成的记录可继续。ChatGPT 接着已保存的分页读取；网页模式先复核末尾，再重新扫描并合并已有片段。</p><p>ChatGPT 保留原有站点读取权限；其他七个平台通过点击工具栏图标取得当前标签的临时读取权限。采集器只接受这八个平台，不会自动扫描其他聊天。F12 兼容入口保留 ChatGPT 采集；新增平台请使用工具栏侧栏，已有记录仍可在两种入口中管理和导出。关闭侧栏继续采集适用于工具栏侧栏入口；F12 兼容入口仍需保持面板打开。</p><p>ChatGPT 整理按分页或节点关系确定顺序；网页正文按消息编号及相邻快照的重叠关系确定顺序，不按时间戳猜顺序。网页模式会自动滚动原聊天，导出正文和附件引用，并明确标注完整性待核对；不声称取得官方原始 JSON、隐藏内容或全部历史分支。正文模式筛除系统、工具、思考等辅助记录，保留用户重写和纠错，不自动判断旧稿是否作废。附件只保留引用，空正文会明确标记。</p><p>原始记录不会被整理覆盖。整理结果在下载时生成，不额外写入记录库。空间数字是内容大小估算；删除只清理扩展中的所选记录，原聊天与下载文件保留。</p><p>后台唤醒权限用于恢复正在运行的任务，不增加网站访问范围。读取所需登录信息仅在原聊天页面内存中使用，暂停或结束时释放；登录响应与请求凭据不写入扩展记录或下载文件。只读取当前聊天，不发消息、不自动刷新，没有外部接收服务器。版本标记不代表历史分支已采集；完成当前路线不等于官方全量导出。</p><p id="identity" class="identity"></p></div></details>
+    <details><summary>旧版接口诊断</summary><div class="utility-content"><p>旧版强制完整请求曾返回 403，现已停用。此操作仅保存已有错误证据，不会再次请求该接口。侧栏查看本机历史状态；F12 入口还可读取已有 Network 错误响应。</p><button id="startFull">保存已有诊断</button></div></details>
+  </div>
+  <p class="power-help">× 只关闭侧栏 · “关闭插件”会停止任务并休眠</p>
+  <footer><svg class="icon" aria-hidden="true"><use href="#i-archive"/></svg>原文保留在本机，整理不覆盖备份</footer>
+</main>
+<dialog id="deleteDialog" aria-labelledby="deleteTitle"><div class="dialog-mark"><svg class="icon"><use href="#i-trash"/></svg></div><h2 id="deleteTitle">删除这条本地记录？</h2><p id="deleteDescription"></p><p class="dialog-note">将删除它在扩展中保存的状态和原始响应，无法从扩展恢复。ChatGPT 原聊天和已下载文件不受影响。</p><p id="deleteError" role="alert"></p><div class="dialog-actions"><button id="cancelDelete">取消</button><button id="confirmDelete" class="danger">确认删除</button></div></dialog>
+</body>
+</html>
