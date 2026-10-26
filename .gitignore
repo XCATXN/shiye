@@ -1,0 +1,18 @@
+# Personal conversation data and development captures must stay local.
+reports/
+outputs/
+archives/
+reference-client/
+private/
+downloads/
+dist/
+__pycache__/
+*.py[cod]
+node_modules/
+.env
+.env.*
+*.har
+*.zip
+*.log
+.DS_Store
+Thumbs.db
